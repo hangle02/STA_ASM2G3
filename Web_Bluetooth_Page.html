@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Self-Balancing Robot BLE Control</title>
+  <style>
+    body { font-family: sans-serif; text-align: center; padding: 30px; }
+    button { padding: 15px 30px; margin: 10px; font-size: 16px; }
+    input { margin: 5px; padding: 8px; width: 80px; }
+  </style>
+</head>
+<body>
+  <h2>🛠 Robot BLE Controller</h2>
+  <button onclick="connectBLE()">🔗 Connect</button>
+  <hr>
+
+  <h3>🚦 Control Mode</h3>
+  <button onclick="sendCommand('CMD:FWD')">⬆ Forward</button>
+  <button onclick="sendCommand('CMD:BWD')">⬇ Backward</button><br>
+  <button onclick="sendCommand('CMD:LEFT')">⬅ Left</button>
+  <button onclick="sendCommand('CMD:RIGHT')">➡ Right</button><br>
+  <button onclick="sendCommand('CMD:STOP')">⏹ Stop</button>
+
+  <h3>⚙️ Mode</h3>
+  <button onclick="sendCommand('MODE:0')">Balancing</button>
+  <button onclick="sendCommand('MODE:1')">Control</button>
+
+  <h3>🧪 PID Settings</h3>
+  <input type="number" id="kp" placeholder="KP" step="0.1">
+  <input type="number" id="ki" placeholder="KI" step="0.1">
+  <input type="number" id="kd" placeholder="KD" step="0.1">
+  <input type="number" id="setpoint" placeholder="Setpoint" step="0.1">
+  <br><button onclick="sendPID()">📤 Send PID</button>
+
+  <h4 id="status">🔌 Not connected</h4>
+
+  <script>
+    let bleDevice, bleCharacteristic;
+
+    async function connectBLE() {
+      try {
+        bleDevice = await navigator.bluetooth.requestDevice({
+          filters: [{ name: 'SelfBalancingRobot' }],
+          optionalServices: ['4fafc201-1fb5-459e-8fcc-c5c9c331914b']
+        });
+        const server = await bleDevice.gatt.connect();
+        const service = await server.getPrimaryService('4fafc201-1fb5-459e-8fcc-c5c9c331914b');
+        bleCharacteristic = await service.getCharacteristic('beb5483e-36e1-4688-b7f5-ea07361b26a8');
+        document.getElementById('status').innerText = '✅ Connected to robot';
+      } catch (error) {
+        console.error(error);
+        alert('Connection failed!');
+      }
+    }
+
+    function sendCommand(command) {
+      if (!bleCharacteristic) return;
+      const encoder = new TextEncoder();
+      bleCharacteristic.writeValue(encoder.encode(command));
+    }
+
+    function sendPID() {
+      const kp = parseFloat(document.getElementById('kp').value || 0);
+      const ki = parseFloat(document.getElementById('ki').value || 0);
+      const kd = parseFloat(document.getElementById('kd').value || 0);
+      const sp = parseFloat(document.getElementById('setpoint').value || 0);
+      const cmd = `PID:${kp},${ki},${kd},${sp}`;
+      sendCommand(cmd);
+    }
+  </script>
+</body>
+</html>
